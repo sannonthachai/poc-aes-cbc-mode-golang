@@ -15,14 +15,18 @@ import (
 )
 
 // Cipher key must be 32 chars long because block size is 16 bytes
-const SECRET = "abcdefghijklmnopqrstuvwxyz012345"
-const IV = "1234567890123456"
+const SECRET = "KaPdSgVkYp3s6v9y$B&E(H+MbQeThWmZ"
+const IV = "3F4528482B4D6251"
 
 type Credential struct {
 	TranId   string `json:"tran_id"`
 	QrCode   string `json:"qr_code"`
 	IdCard   string `json:"id_card"`
 	MobileNo string `json:"mobile_no,omitempty"`
+}
+
+type CipherText struct {
+	CipherText string `json:"cipher_text"`
 }
 
 func main() {
@@ -56,19 +60,22 @@ func main() {
 			bodyBytes, _ = ioutil.ReadAll(c.Request().Body)
 		}
 
-		fmt.Println(string(bodyBytes))
+		cipherText := CipherText{}
+		json.Unmarshal(bodyBytes, &cipherText)
 
-		de, err := Decrypt(string(bodyBytes))
+		de, err := Decrypt(cipherText.CipherText)
 		if err != nil {
 			fmt.Println(fmt.Sprintf("Failed to decrypt: %s - %s", plainText, err.Error()))
 		}
 
-		test := Credential{}
-		json.Unmarshal([]byte(de), &test)
+		c.Request().Body = ioutil.NopCloser(bytes.NewBuffer([]byte(de)))
 
-		c.Set("credential-test", test)
-		cre := c.Get("credential-test").(Credential)
-		fmt.Println(cre)
+		cre := Credential{}
+		if err := c.Bind(&cre); err != nil {
+			fmt.Println("can not bind struct")
+		}
+
+		fmt.Println("bind data ->", cre)
 
 		return c.String(http.StatusOK, "Hello, World!")
 	})
